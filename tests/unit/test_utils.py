@@ -1,4 +1,5 @@
 import conn_track.utils as utils
+from conn_track.classes import Connection
 
 net_tcp_test_data = '''sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
  0: 00000000:1F99 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 30876 1 0000000000000000 100 0 0 10 0
@@ -31,12 +32,7 @@ def test_little_to_big_endian():
 
 def test_parse_net_tcp():
 	connections = utils.parse_net_tcp(net_tcp_test_data.strip().split('\n'))
-	assert connections[0]['local_address'] != '0.0.0.0'
-	assert connections[0]['remote_address'] != '0.0.0.0'
-	assert connections[0]['remote_port'] != None
-
-	assert connections[7]['local_address'] == '10.162.15.225'
-	assert connections[7]['local_port'] == None
-
-	assert connections[7]['remote_address'] == '91.189.91.42'
-	assert connections[7]['remote_port'] == 443
+	print(connections)
+	len(connections) == 11
+	assert Connection('169.254.169.254', 80, '10.162.15.225', 56348, None) in connections
+	assert Connection('91.189.91.42', 443, '10.162.15.225', None, None) in connections
