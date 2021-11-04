@@ -1,5 +1,6 @@
 import conn_track.utils as utils
 from conn_track.classes import Connection
+import time
 
 net_tcp_test_data = '''sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
  0: 00000000:1F99 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 30876 1 0000000000000000 100 0 0 10 0
@@ -34,5 +35,32 @@ def test_parse_net_tcp():
 	connections = utils.parse_net_tcp(net_tcp_test_data.strip().split('\n'))
 	print(connections)
 	len(connections) == 11
-	assert Connection('169.254.169.254', 80, '10.162.15.225', 56348, None) in connections
-	assert Connection('91.189.91.42', 443, '10.162.15.225', None, None) in connections
+	assert Connection('169.254.169.254', 80, '10.162.15.225', 56348, None, 'outbound') in connections
+	assert Connection('91.189.91.42', 443, '10.162.15.225', 0, None, 'outbound') in connections
+
+def test_generate_block_list():
+	conns = set([Connection('169.254.169.254', 1025, '10.162.15.225', 80, None, 'inbound'), 
+		Connection('169.254.169.254', 1026, '10.162.15.225', 443, None, 'inbound'), 
+		Connection('169.254.169.254', 1027, '10.162.15.225', 2067, None, 'inbound'),
+		Connection('169.254.169.253', 1028, '10.162.15.225', 80, None, 'inbound')])
+	block_list = utils.generate_block_list(conns)
+	assert len(block_list) == 1
+	assert block_list[0] == '169.254.169.254'
+
+
+def test_purge_old_conns():
+	old_time = time.time() - 60
+	conns = set([Connection('169.254.169.254', 1025, '10.162.15.225', 80, old_time, 'inbound'), 
+		Connection('169.254.169.254', 1026, '10.162.15.225', 443, old_time, 'inbound'), 
+		Connection('169.254.169.254', 1027, '10.162.15.225', 2067, old_time, 'inbound'),
+		Connection('169.254.169.253', 1028, '10.162.15.225', 80, time.time(), 'inbound')])
+	new_conns = utils.purge_old_conns(conns)
+	assert len(new_conns) == 1
+	print(new_conns)
+	conns = list(conns)
+	assert conns[0].remote_address == '169.254.169.253'
+	assert conns[0].remote_port ==  1028
+	assert conns[0].local_address == '10.162.15.225'
+	assert conns[0].local_port ==  80
+
+

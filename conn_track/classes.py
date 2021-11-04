@@ -7,6 +7,7 @@ class Connection:
 	local_address: str
 	local_port: int
 	time: int
+	direction: str
 
 
 	def __eq__(self, other):
