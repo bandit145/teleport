@@ -1,8 +1,9 @@
 import conn_track.utils as utils
 from conn_track.classes import Connection
 import time
+import logging
 
-net_tcp_test_data = '''sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
+net_tcp_test_data = """sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
  0: 00000000:1F99 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 30876 1 0000000000000000 100 0 0 10 0
  1: 00000000:DFF9 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 22564 1 0000000000000000 100 0 0 10 0
  2: 00000000:BDDB 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 22572 1 0000000000000000 100 0 0 10 0
@@ -24,43 +25,57 @@ net_tcp_test_data = '''sl  local_address rem_address   st tx_queue rx_queue tr t
 18: E10FA20A:0016 3BD7E1CC:D94B 01 00000000:00000000 02:000AF7F9 00000000     0        0 27208 3 0000000000000000 22 4 29 10 -1
 19: E10FA20A:E6A6 B358BD5B:01BB 01 00000000:00000000 00:00000000 00000000     0        0 26165 1 0000000000000000 28 4 0 10 -1
 20: E10FA20A:D8B2 9858BD5B:0050 06 00000000:00000000 03:00001219 00000000     0        0 0 3 0000000000000000
-'''
+"""
+
 
 def test_little_to_big_endian():
-	# E10FA20A == 10.162.15.225
-	assert utils.little_to_big_endian('E10FA20A') == '0AA20FE1'
-	assert utils.little_to_big_endian('0100007F') == '7F000001'
+    # E10FA20A == 10.162.15.225
+    assert utils.little_to_big_endian("E10FA20A") == "0AA20FE1"
+    assert utils.little_to_big_endian("0100007F") == "7F000001"
+
 
 def test_parse_net_tcp():
-	connections = utils.parse_net_tcp(net_tcp_test_data.strip().split('\n'))
-	print(connections)
-	len(connections) == 11
-	assert Connection('169.254.169.254', 80, '10.162.15.225', 56348, None, 'outbound') in connections
-	assert Connection('91.189.91.42', 443, '10.162.15.225', 0, None, 'outbound') in connections
+    connections = utils.parse_net_tcp(net_tcp_test_data.strip().split("\n"))
+    print(connections)
+    len(connections) == 11
+    assert (
+        Connection("169.254.169.254", 80, "10.162.15.225", 56348, None, "outbound")
+        in connections
+    )
+    assert (
+        Connection("91.189.91.42", 443, "10.162.15.225", 0, None, "outbound")
+        in connections
+    )
+
 
 def test_generate_block_list():
-	conns = set([Connection('169.254.169.254', 1025, '10.162.15.225', 80, None, 'inbound'), 
-		Connection('169.254.169.254', 1026, '10.162.15.225', 443, None, 'inbound'), 
-		Connection('169.254.169.254', 1027, '10.162.15.225', 2067, None, 'inbound'),
-		Connection('169.254.169.253', 1028, '10.162.15.225', 80, None, 'inbound')])
-	block_list = utils.generate_block_list(conns)
-	assert len(block_list) == 1
-	assert block_list[0] == '169.254.169.254'
+    conns = set(
+        [
+            Connection("169.254.169.254", 1025, "10.162.15.225", 80, None, "inbound"),
+            Connection("169.254.169.254", 1026, "10.162.15.225", 443, None, "inbound"),
+            Connection("169.254.169.254", 1027, "10.162.15.225", 2066, None, "inbound"),
+            Connection("169.254.169.254", 1029, "10.162.15.225", 2067, None, "inbound"),
+            Connection("169.254.169.253", 1028, "10.162.15.225", 80, None, "inbound"),
+            Connection("169.254.169.252", 80, "10.162.15.225", 2067, None, "outbound"),
+            Connection("169.254.169.252", 443, "10.162.15.225", 2068, None, "outbound"),
+            Connection("169.254.169.252", 90, "10.162.15.225", 2069, None, "outbound"),
+            Connection("169.254.169.252", 95, "10.162.15.225", 2070, None, "outbound"),
+        ]
+    )
+    blocks = []
+    block_list = utils.generate_block_list(conns, blocks, logging)
+    assert len(block_list) == 1
+    assert block_list[0] == "169.254.169.254"
 
 
-def test_purge_old_conns():
-	old_time = time.time() - 60
-	conns = set([Connection('169.254.169.254', 1025, '10.162.15.225', 80, old_time, 'inbound'), 
-		Connection('169.254.169.254', 1026, '10.162.15.225', 443, old_time, 'inbound'), 
-		Connection('169.254.169.254', 1027, '10.162.15.225', 2067, old_time, 'inbound'),
-		Connection('169.254.169.253', 1028, '10.162.15.225', 80, time.time(), 'inbound')])
-	new_conns = utils.purge_old_conns(conns)
-	assert len(new_conns) == 1
-	print(new_conns)
-	conns = list(conns)
-	assert conns[0].remote_address == '169.254.169.253'
-	assert conns[0].remote_port ==  1028
-	assert conns[0].local_address == '10.162.15.225'
-	assert conns[0].local_port ==  80
-
-
+def test_prune_recent_blocks():
+    test_time = time.time()
+    recent_blocks = [
+        ("1.1.1.1", test_time - 70),
+        ("1.1.1.2", test_time - 30),
+        ("1.1.1.3", time.time()),
+    ]
+    new_blocks = utils.prune_recent_blocks(recent_blocks, logging)
+    assert len(new_blocks) == 2
+    assert new_blocks[0][0] == "1.1.1.2"
+    assert new_blocks[1][0] == "1.1.1.3"
