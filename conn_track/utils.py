@@ -15,7 +15,7 @@ def parse_net_tcp(net_tcp):
 		remote_address, remote_port  = parse_address(line[2])
 		state = int(line[3], base=16)
 		direction = None
-		# Checking the if it's a highnumber connection to a reserved port or vise versa should cover like >90% of directionality cases.
+		# shortcut: Checking the if it's a highnumber connection to a reserved port or vise versa should cover like >90% of directionality cases.
 		if remote_port >= 1024 and local_port < 1024:
 			direction = 'inbound'
 		elif local_port >= 1024 and remote_port < 1024:

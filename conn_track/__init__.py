@@ -7,14 +7,25 @@ def read_file():
 	with open('/proc/net/tcp', mode='r') as net_ncp:
 		return net_ncp.read().strip().split('\n')
 
-def process_connections(new_conns, connections, conn_counter):
-	for conn in new_conns:
+def process_connections(cur_connections, connections, conn_counter):
+	cur_time = time.time()
+	for conn in connections.difference(cur_connections):
+	 	if cur_time - conn.time > 60:
+	 		# remove connections that no longer are active and are older than a minute
+	 		connections.remove(conn)
+	 		print('purging connection: ', conn)
+
+	for conn in cur_connections.difference(connections):
+		print('counter +1')
 		conn_counter.inc()
 		connections.add(conn)
 		if conn.direction == 'inbound':
 			print(f'New Connection:  {conn.local_address}:{conn.local_port} <- {conn.remote_address}:{conn.remote_port}')
 		elif conn.direction == 'outbound':
 			print(f'New Connection:  {conn.local_address}:{conn.local_port} -> {conn.remote_address}:{conn.remote_port}')
+		else:
+			print(f'New Connection:  {conn.local_address}:{conn.local_port} -- {conn.remote_address}:{conn.remote_port}')
+
 
 def run():
 	try:
@@ -24,12 +35,9 @@ def run():
 		start_http_server(9000)
 		while True:
 			time.sleep(10)
-			connections = utils.purge_old_conns(connections)
 			cur_connections = utils.parse_net_tcp(read_file())
-			new_conns = cur_connections.difference(connections)
-			print(new_conns)
-			process_connections(new_conns, connections, conn_counter)
+			process_connections(cur_connections, connections, conn_counter)
 			utils.block_addresses(utils.generate_block_list(connections))
 	except KeyboardInterrupt:
-		print('User exited', file=sys.stderr)
+		print('User exited')
 		sys.exit(0)
