@@ -129,14 +129,14 @@ def process_connections(cur_connections, connections, conn_counter, logger):
         connections.add(conn)
         if conn.direction == "inbound":
             logger.info(
-                f"New Connection:  {conn.local_address}:{conn.local_port} <- {conn.remote_address}:{conn.remote_port}"
+                f"New Connection:  {conn.remote_address}:{conn.remote_port} -> {conn.local_address}:{conn.local_port}"
             )
         elif conn.direction == "outbound":
             logger.info(
-                f"New Connection:  {conn.local_address}:{conn.local_port} -> {conn.remote_address}:{conn.remote_port}"
+                f"New Connection:  {conn.remote_address}:{conn.remote_port} <- {conn.local_address}:{conn.local_port}"
             )
         else:
             # unkown direction, this can happen if communication is like 8080 <-> 9000
             logger.info(
-                f"New Connection:  {conn.local_address}:{conn.local_port} -- {conn.remote_address}:{conn.remote_port}"
+                f"New Connection:  {conn.remote_address}:{conn.remote_port} -- {conn.local_address}:{conn.local_port}"
             )
