@@ -49,21 +49,54 @@ def test_parse_net_tcp():
 
 
 def test_generate_block_list():
+    cur_time = time.time()
     conns = set(
         [
-            Connection("169.254.169.254", 1025, "10.162.15.225", 80, None, "inbound"),
-            Connection("169.254.169.254", 1026, "10.162.15.225", 443, None, "inbound"),
-            Connection("169.254.169.254", 1027, "10.162.15.225", 2066, None, "inbound"),
-            Connection("169.254.169.254", 1029, "10.162.15.225", 2067, None, "inbound"),
-            Connection("169.254.169.253", 1028, "10.162.15.225", 80, None, "inbound"),
-            Connection("169.254.169.252", 80, "10.162.15.225", 2067, None, "outbound"),
-            Connection("169.254.169.252", 443, "10.162.15.225", 2068, None, "outbound"),
-            Connection("169.254.169.252", 90, "10.162.15.225", 2069, None, "outbound"),
-            Connection("169.254.169.252", 95, "10.162.15.225", 2070, None, "outbound"),
+            Connection(
+                "169.254.169.254", 1025, "10.162.15.225", 80, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1026, "10.162.15.225", 443, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1027, "10.162.15.225", 2066, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1029, "10.162.15.225", 2067, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.253", 1028, "10.162.15.225", 80, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.252", 80, "10.162.15.225", 2067, cur_time, "outbound"
+            ),
+            Connection(
+                "169.254.169.252", 443, "10.162.15.225", 2068, cur_time, "outbound"
+            ),
+            Connection(
+                "169.254.169.252", 90, "10.162.15.225", 2069, cur_time, "outbound"
+            ),
+            Connection(
+                "169.254.169.252", 95, "10.162.15.225", 2070, cur_time, "outbound"
+            ),
+            # make sure if there is an old active connection it does not conisder that
+            # this can occur if we have a connection that is older then 60 seconds but it will still be in the conns set
+            Connection(
+                "169.254.169.250", 1025, "10.162.15.225", 22, cur_time - 70, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1026, "10.162.15.225", 443, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1027, "10.162.15.225", 2066, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1029, "10.162.15.225", 2067, cur_time, "inbound"
+            ),
         ]
     )
     blocks = []
-    block_list = utils.generate_block_list(conns, blocks, logging)
+    block_list = utils.generate_block_list(conns, blocks, cur_time, logging)
     assert len(block_list) == 1
     assert block_list[0] == "169.254.169.254"
 
@@ -75,7 +108,63 @@ def test_prune_recent_blocks():
         ("1.1.1.2", test_time - 30),
         ("1.1.1.3", time.time()),
     ]
-    new_blocks = utils.prune_recent_blocks(recent_blocks, logging)
+    new_blocks = utils.prune_recent_blocks(recent_blocks, test_time, logging)
     assert len(new_blocks) == 2
     assert new_blocks[0][0] == "1.1.1.2"
     assert new_blocks[1][0] == "1.1.1.3"
+
+
+def test_prune_connections():
+    cur_time = time.time()
+    # connections from file
+    cur_conns = set(
+        [
+            Connection(
+                "169.254.169.254", 1025, "10.162.15.225", 80, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1026, "10.162.15.225", 443, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1027, "10.162.15.225", 2066, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.254", 1029, "10.162.15.225", 2067, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1026, "10.162.15.225", 443, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1027, "10.162.15.225", 2066, cur_time, "inbound"
+            ),
+            Connection(
+                "169.254.169.250", 1029, "10.162.15.225", 2067, cur_time, "inbound"
+            ),
+        ]
+    )
+    # connections no longer in file but we will maintain them/prune them for block purposes
+    # in this case we have two connection here, both are no longer in the /proc/net/tcp file
+    # but with the first connection it is over 60 seconds so we discard it. with the last one it is only 30 seconds old, we want to keep this for blocking purposes.
+    conns = set(
+        [
+            Connection(
+                "169.254.169.250", 1025, "10.162.15.225", 22, cur_time - 70, "inbound"
+            ),
+            Connection(
+                "169.254.169.255", 1025, "10.162.15.225", 76, cur_time - 30, "inbound"
+            ),
+        ]
+    )
+    utils.prune_connections(cur_conns, conns, cur_time, logging)
+    assert (
+        Connection(
+            "169.254.169.250", 1025, "10.162.15.225", 22, cur_time - 70, "inbound"
+        )
+        not in conns
+    )
+    assert (
+        Connection(
+            "169.254.169.255", 1025, "10.162.15.225", 76, cur_time - 30, "inbound"
+        )
+        in conns
+    )

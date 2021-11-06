@@ -51,15 +51,15 @@ def little_to_big_endian(hex_str):
 
 
 # is this efficent? Hell no, but it'll work for now. I'd have to look into redoing the initial datastrucure if I wanted to avoid all this extra looping I think.
-def generate_block_list(conn_list, recent_blocks, logger):
+def generate_block_list(conn_list, recent_blocks, cur_time, logger):
     block_cnt = {}
     block_list = []
     for conn in conn_list:
-        if conn.direction == "inbound":
+        if conn.direction == "inbound" and cur_time - conn.time < 60:
             if conn.remote_address in block_cnt.keys():
                 # this if it is the same port duplicates will not be allowed in the set
                 block_cnt[conn.remote_address]["ports"].add(conn.local_port)
-                block_cnt[conn.remote_address]["local_addr"] = conn.local_address
+                block_cnt[conn.remote_address]["local_address"] = conn.local_address
             else:
                 block_cnt[conn.remote_address] = {
                     "ports": set([conn.local_port]),
@@ -100,12 +100,11 @@ def block_addresses(conn_block_list, recent_blocks, logger):
     return recent_blocks
 
 
-def prune_recent_blocks(recent_blocks, logger):
+def prune_recent_blocks(recent_blocks, cur_time, logger):
     new_recent_blocks = []
     # prune recent block list
     # we need to maintain this extra state so we do not block via iptables multiple times, this is also used to determine if a connection still returned from
-    # /proc/net/tcp is just waiting to time as it has been blocked already and should not be readded
-    cur_time = time.time()
+    # /proc/net/tcp is just waiting to time out as it has been blocked already and should not be re-added
     for key, value in recent_blocks:
         if cur_time - value < 60:
             new_recent_blocks.append((key, value))
@@ -114,17 +113,16 @@ def prune_recent_blocks(recent_blocks, logger):
     return new_recent_blocks
 
 
-def prune_connections(cur_connections, connections, logger):
-    cur_time = time.time()
+def prune_connections(cur_connections, connections, cur_time, logger):
     for conn in connections.difference(cur_connections):
         if cur_time - conn.time > 60:
             # remove connections that no longer are active and are older than a minute
             connections.remove(conn)
-        else:
             logger.debug(f"purging connection: {conn}")
 
 
 def process_connections(cur_connections, connections, conn_counter, logger):
+    logger.debug(f"DEBUG: active conn counts: {len(connections)}")
     for conn in cur_connections.difference(connections):
         conn_counter.inc()
         logger.debug(f"DEBUG: {conn}")

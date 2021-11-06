@@ -25,17 +25,20 @@ def run():
         start_http_server(9000)
         while True:
             time.sleep(10)
+            cur_time = time.time()
             cur_connections = utils.parse_net_tcp(read_file())
-            utils.prune_connections(cur_connections, connections, logging)
+            utils.prune_connections(cur_connections, connections, cur_time, logging)
             utils.process_connections(
                 cur_connections, connections, conn_counter, logging
             )
             recent_blocks = utils.block_addresses(
-                utils.generate_block_list(connections, recent_blocks, logging),
+                utils.generate_block_list(
+                    connections, recent_blocks, cur_time, logging
+                ),
                 recent_blocks,
                 logging,
             )
-            recent_blocks = utils.prune_recent_blocks(recent_blocks, logging)
+            recent_blocks = utils.prune_recent_blocks(recent_blocks, cur_time, logging)
     except KeyboardInterrupt:
         print("User exited")
         sys.exit(0)
