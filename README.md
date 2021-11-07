@@ -16,4 +16,6 @@ Run tests: ```make test``` or ```python -m pytest tests/```
 ### Running the program
 On any host with docker run the following command to pull and run the programs container image.
 
+Metrics will be available on port 9000; there is one counter called new_connections.
+
 ```docker run --cap-add=NET_ADMIN --network host bandit145/conn-track:latest```
