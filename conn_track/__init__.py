@@ -1,6 +1,7 @@
 import conn_track.utils as utils
 import time
 import sys
+import os
 import logging
 from prometheus_client import Counter, start_http_server
 
@@ -11,9 +12,12 @@ def read_file():
 
 
 def run():
+    log_level = os.getenv('LOGGING_LEVEL')
+    if not log_level:
+        log_level = 'info'
     logging.basicConfig(
         stream=sys.stdout,
-        level=logging.DEBUG,
+        level=getattr(logging, log_level.upper()),
         format="%(asctime)s %(message)s",
         datefmt="%Y-%d-%d %H:%M:%S",
     )
