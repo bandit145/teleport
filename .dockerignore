@@ -1,0 +1,3 @@
+**/.vagrant
+**/tests
+**/.pytest_cache
