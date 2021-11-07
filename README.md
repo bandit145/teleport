@@ -2,7 +2,7 @@
 Teleport interview project
 
 ### Testing this program
-Configure a Python virtualenv: (This program was developed on python3.8, any verions newer then that should work fine) 
+Configure a Python virtualenv: (This program was developed on python3.8, any versions newer then that should work fine) 
 ```virtualenv venv```
 
 Start venv: ```source venv/bin/activate```
