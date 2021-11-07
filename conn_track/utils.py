@@ -55,16 +55,18 @@ def generate_block_list(conn_list, recent_blocks, cur_time, logger):
     block_cnt = {}
     block_list = []
     for conn in conn_list:
-        if conn.direction == "inbound" and cur_time - conn.time < 60:
-            if conn.remote_address in block_cnt.keys():
-                # this if it is the same port duplicates will not be allowed in the set
-                block_cnt[conn.remote_address]["ports"].add(conn.local_port)
-                block_cnt[conn.remote_address]["local_address"] = conn.local_address
-            else:
-                block_cnt[conn.remote_address] = {
-                    "ports": set([conn.local_port]),
-                    "local_address": conn.local_address,
-                }
+        # ignore localhost so we do not block localhost connections
+        if conn.remote_address != "127.0.0.1":
+            if conn.direction == "inbound" and cur_time - conn.time < 60:
+                if conn.remote_address in block_cnt.keys():
+                    # this if it is the same port duplicates will not be allowed in the set
+                    block_cnt[conn.remote_address]["ports"].add(conn.local_port)
+                    block_cnt[conn.remote_address]["local_address"] = conn.local_address
+                else:
+                    block_cnt[conn.remote_address] = {
+                        "ports": set([conn.local_port]),
+                        "local_address": conn.local_address,
+                    }
     logger.debug(f"DEBUG: {block_cnt}")
     block_addrs = [x[0] for x in recent_blocks]
     for item, value in block_cnt.items():

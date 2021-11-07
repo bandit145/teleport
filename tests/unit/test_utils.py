@@ -79,6 +79,12 @@ def test_generate_block_list():
             Connection(
                 "169.254.169.252", 95, "10.162.15.225", 2070, cur_time, "outbound"
             ),
+            # make sure we do not pick up 127.0.0.1 communication
+            Connection("127.0.0.1", 1028, "127.0.0.1", 80, cur_time, "inbound"),
+            Connection("127.0.0.1", 80, "127.0.0.1", 2067, cur_time, "inbound"),
+            Connection("127.0.0.1", 443, "127.0.0.1", 2068, cur_time, "inbound"),
+            Connection("127.0.0.1", 90, "127.0.0.1", 2069, cur_time, "inbound"),
+            Connection("127.0.0.1", 95, "127.0.0.1", 2070, cur_time, "inbound"),
             # make sure if there is an old active connection it does not conisder that
             # this can occur if we have a connection that is older then 60 seconds but it will still be in the conns set
             Connection(

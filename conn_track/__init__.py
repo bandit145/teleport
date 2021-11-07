@@ -12,9 +12,9 @@ def read_file():
 
 
 def run():
-    log_level = os.getenv('LOGGING_LEVEL')
+    log_level = os.getenv("LOGGING_LEVEL")
     if not log_level:
-        log_level = 'info'
+        log_level = "info"
     logging.basicConfig(
         stream=sys.stdout,
         level=getattr(logging, log_level.upper()),
